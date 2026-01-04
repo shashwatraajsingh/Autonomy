@@ -1,0 +1,37 @@
+{
+    "name": "@autonomy-ai/sdk",
+    "version": "1.0.0",
+    "description": "SDK for integrating AI agents with Autonomy - The Financial Operating System for AI Agents",
+    "main": "dist/index.js",
+    "module": "dist/index.mjs",
+    "types": "dist/index.d.ts",
+    "files": [
+        "dist"
+    ],
+    "scripts": {
+        "build": "tsup src/index.ts --format cjs,esm --dts",
+        "prepublishOnly": "npm run build"
+    },
+    "keywords": [
+        "ai-agents",
+        "autonomy",
+        "governance",
+        "spending-limits",
+        "x402",
+        "erc-4337",
+        "erc-8004",
+        "blockchain",
+        "web3"
+    ],
+    "author": "Autonomy Team",
+    "license": "MIT",
+    "repository": {
+        "type": "git",
+        "url": "https://github.com/shashwatraajsingh/Autonomy.git"
+    },
+    "homepage": "https://github.com/shashwatraajsingh/Autonomy#readme",
+    "devDependencies": {
+        "tsup": "^8.0.1",
+        "typescript": "^5.3.3"
+    }
+}

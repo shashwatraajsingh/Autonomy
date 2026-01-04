@@ -110,7 +110,7 @@ export default function DemoPage() {
                                     </span>
                                 ) : (
                                     <span className="flex items-center gap-1.5 text-xs font-medium text-yellow-400 bg-yellow-400/10 px-2 py-1 rounded-full">
-                                        <Cloud className="w-3 h-3" /> Demo Mode
+                                        <Cloud className="w-3 h-3" />
                                     </span>
                                 )}
                             </h1>
@@ -156,8 +156,8 @@ export default function DemoPage() {
                                                 <div className="flex items-center justify-between mb-3">
                                                     <span className="text-xs text-[#666687] uppercase">Status</span>
                                                     <span className={`px-2 py-0.5 rounded text-xs font-bold ${selectedAgent.status === 'active' ? 'bg-green-400/10 text-green-400' :
-                                                            selectedAgent.status === 'paused' ? 'bg-yellow-400/10 text-yellow-400' :
-                                                                'bg-red-400/10 text-red-400'
+                                                        selectedAgent.status === 'paused' ? 'bg-yellow-400/10 text-yellow-400' :
+                                                            'bg-red-400/10 text-red-400'
                                                         }`}>
                                                         {selectedAgent.status.toUpperCase()}
                                                     </span>
@@ -184,8 +184,8 @@ export default function DemoPage() {
                                                     <div className="w-full h-2 bg-[#212134] rounded-full overflow-hidden">
                                                         <div
                                                             className={`h-full transition-all ${(selectedAgent.spentToday / selectedAgent.policy.dailyLimit) > 0.8
-                                                                    ? 'bg-red-500'
-                                                                    : 'bg-[#4945ff]'
+                                                                ? 'bg-red-500'
+                                                                : 'bg-[#4945ff]'
                                                                 }`}
                                                             style={{ width: `${Math.min((selectedAgent.spentToday / selectedAgent.policy.dailyLimit) * 100, 100)}%` }}
                                                         />
@@ -222,8 +222,8 @@ export default function DemoPage() {
                                                 key={s.name}
                                                 onClick={() => setSelectedService(s.name)}
                                                 className={`w-full text-left p-3 rounded-lg border transition-all ${selectedService === s.name
-                                                        ? 'border-[#4945ff] bg-[#4945ff]/10'
-                                                        : 'border-[#2e2e48] bg-[#1a1a2e] hover:border-[#4945ff]/50'
+                                                    ? 'border-[#4945ff] bg-[#4945ff]/10'
+                                                    : 'border-[#2e2e48] bg-[#1a1a2e] hover:border-[#4945ff]/50'
                                                     }`}
                                             >
                                                 <div className="flex justify-between items-center">
@@ -245,8 +245,8 @@ export default function DemoPage() {
                                                 key={v}
                                                 onClick={() => setAmount(v)}
                                                 className={`flex-1 py-2 rounded text-sm font-medium border transition-all ${amount === v
-                                                        ? 'border-[#4945ff] bg-[#4945ff] text-white'
-                                                        : 'border-[#2e2e48] text-[#a5a5ba] hover:border-[#4945ff]/50'
+                                                    ? 'border-[#4945ff] bg-[#4945ff] text-white'
+                                                    : 'border-[#2e2e48] text-[#a5a5ba] hover:border-[#4945ff]/50'
                                                     }`}
                                             >
                                                 ${v}
@@ -290,8 +290,8 @@ export default function DemoPage() {
                                             animate={{ opacity: 1, y: 0 }}
                                             exit={{ opacity: 0 }}
                                             className={`p-4 rounded-lg border ${lastResult.approved
-                                                    ? 'border-green-500/30 bg-green-500/10'
-                                                    : 'border-red-500/30 bg-red-500/10'
+                                                ? 'border-green-500/30 bg-green-500/10'
+                                                : 'border-red-500/30 bg-red-500/10'
                                                 }`}
                                         >
                                             <div className="flex items-center gap-2 mb-2">
@@ -395,8 +395,8 @@ export default function DemoPage() {
                                                 animate={{ opacity: 1, x: 0 }}
                                                 transition={{ delay: i * 0.05 }}
                                                 className={`p-4 rounded-lg border ${tx.status === 'approved'
-                                                        ? 'border-green-500/20 bg-green-500/5'
-                                                        : 'border-red-500/20 bg-red-500/5'
+                                                    ? 'border-green-500/20 bg-green-500/5'
+                                                    : 'border-red-500/20 bg-red-500/5'
                                                     }`}
                                             >
                                                 <div className="flex items-start justify-between mb-2">

@@ -4,215 +4,204 @@
 
 A comprehensive governance and oversight platform for AI agents. It provides tools for users and organizations to deploy agents with programmable spending limits, permissions, and audit trails. By integrating the x402 payment protocol with agent identity standards like ERC-8004, it creates a "financial operating system" for the agentic economy.
 
-![Autonomy Dashboard](./public/screenshot.png)
+---
 
-## 🎯 Problem
+## The Problem
 
-AI agents are increasingly autonomous—but their financial capabilities are dangerously uncontrolled:
-- No spending limits
-- No service restrictions
-- No audit trails
-- No kill switch
+AI agents are becoming increasingly autonomous—but their financial capabilities remain dangerously uncontrolled:
 
-## 💡 Solution
+-  **No spending limits** — Agents can drain wallets without restriction
+-  **No service restrictions** — Agents can call any API, including malicious ones
+-  **No audit trails** — No visibility into what agents spend money on
+-  **No kill switch** — No way to stop a misbehaving agent instantly
+
+## The Solution
 
 Autonomy provides a **governance layer** between AI agents and their wallets:
 
-- **Programmable Policies**: Set daily limits, per-transaction caps, and service whitelists
-- **Real-time Enforcement**: Every transaction validated against policies before execution
-- **Kill Switch**: Instantly freeze agent activity if something goes wrong
-- **Complete Audit Trail**: Every transaction logged with reasons for approval/rejection
-- **Non-Custodial**: You own your keys—Autonomy never touches your funds
+| Feature | Description |
+|---------|-------------|
+| **Programmable Policies** | Set daily limits, per-transaction caps, and service whitelists |
+| **Real-time Enforcement** | Every transaction validated against policies before execution |
+| **Kill Switch** | Instantly freeze agent activity if something goes wrong |
+| **Complete Audit Trail** | Every transaction logged with reasons for approval/rejection |
+| **Non-Custodial** | You own your keys—Autonomy never touches your funds |
 
-## 🏗️ Architecture
+---
+
+## Architecture
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
-│                        FRONTEND                             │
-│    Next.js + React + Tailwind + Framer Motion              │
-├─────────────────────────────────────────────────────────────┤
-│                        BACKEND                              │
-│    Express + TypeScript + Prisma + PostgreSQL              │
-├─────────────────────────────────────────────────────────────┤
-│                    CORE SERVICES                            │
-│  ┌─────────────┐  ┌─────────────┐  ┌─────────────┐         │
-│  │ Agent       │  │ Policy      │  │ Wallet      │         │
-│  │ Orchestrator│  │ Enforcer    │  │ Manager     │         │
-│  └─────────────┘  └─────────────┘  └─────────────┘         │
-├─────────────────────────────────────────────────────────────┤
-│                    BLOCKCHAIN                               │
-│    ERC-4337 Account Abstraction + x402 Payment Protocol    │
+│                      AI AGENT                                │
+│            (Your agent wants to spend money)                 │
 └─────────────────────────────────────────────────────────────┘
+                              │
+                              ▼
+┌─────────────────────────────────────────────────────────────┐
+│                    AUTONOMY SDK                              │
+│         autonomy.requestPayment('api.openai.com', $5)        │
+└─────────────────────────────────────────────────────────────┘
+                              │
+                              ▼
+┌─────────────────────────────────────────────────────────────┐
+│                  POLICY ENFORCER                             │
+│  ┌─────────────┐  ┌─────────────┐  ┌─────────────┐          │
+│  │ Whitelist   │  │ Daily Limit │  │ Per-Tx Limit│          │
+│  │ ✓ or ✗      │  │ ✓ or ✗      │  │ ✓ or ✗      │          │
+│  └─────────────┘  └─────────────┘  └─────────────┘          │
+└─────────────────────────────────────────────────────────────┘
+                              │
+              ┌───────────────┴───────────────┐
+              ▼                               ▼
+      ┌─────────────┐                 ┌─────────────┐
+      │  APPROVED   │                 │   BLOCKED   │
+      │ Execute tx  │                 │ Log reason  │
+      └─────────────┘                 └─────────────┘
 ```
 
-## ✨ Features
+---
 
-### Agent Management
-- Create agents with unique ERC-8004 identities
-- Assign ERC-4337 smart contract wallets
-- Pause, resume, or freeze agents instantly
+## How It Works
 
-### Policy Engine
-- **Daily Spending Limits**: Cap total daily spending
-- **Per-Transaction Limits**: Block large individual transactions
-- **Service Whitelisting**: Only allow approved APIs/contracts
-- **Kill Switch**: Emergency freeze capability
-
-### Audit & Monitoring
-- Real-time transaction feed
-- Approval/rejection statistics
-- Complete audit history
-- Policy violation alerts
-
-## 🚀 Quick Start
-
-### Frontend (Demo Mode)
-
-```bash
-# Install dependencies
-npm install
-
-# Start development server
-npm run dev
-
-# Open http://localhost:3000
-```
-
-### Backend (Full Mode)
-
-```bash
-# Navigate to backend
-cd backend
-
-# Install dependencies
-npm install
-
-# Setup database (requires PostgreSQL)
-npm run db:migrate
-
-# Start server
-npm run dev
-```
-
-### Environment Variables
-
-Create `.env` in the root:
-
-```env
-# Frontend
-NEXT_PUBLIC_API_URL=http://localhost:4000/api
-```
-
-Create `.env` in `/backend`:
-
-```env
-PORT=4000
-DATABASE_URL="postgresql://user:pass@localhost:5432/autonomy"
-POLYGON_RPC_URL="https://polygon-mumbai.g.alchemy.com/v2/YOUR_KEY"
-OPENAI_API_KEY="sk-..."
-ENCRYPTION_KEY="your-32-character-encryption-key"
-```
-
-## 📂 Project Structure
-
-```
-autonomy/
-├── src/                    # Frontend (Next.js)
-│   ├── app/               # Pages
-│   │   ├── page.tsx       # Landing page
-│   │   ├── demo/          # Policy simulator
-│   │   └── dashboard/     # Agent management
-│   ├── components/        # UI components
-│   └── lib/               # Utilities & API client
-├── backend/               # Backend (Express)
-│   ├── src/
-│   │   ├── routes/        # API endpoints
-│   │   └── services/      # Business logic
-│   └── prisma/            # Database schema
-└── public/                # Static assets
-```
-
-## 🔧 Tech Stack
-
-### Frontend
-- **Next.js 16** - React framework
-- **TailwindCSS** - Styling
-- **Framer Motion** - Animations
-- **Lucide Icons** - Icons
-
-### Backend
-- **Express.js** - API server
-- **Prisma** - ORM
-- **PostgreSQL** - Database
-- **ethers.js** - Blockchain
-- **OpenAI** - AI capabilities
-
-### Standards
-- **ERC-4337** - Account Abstraction
-- **ERC-8004** - Agent Identity
-- **x402** - HTTP Payment Protocol
-
-## 🎮 Demo
-
-The platform works in two modes:
-
-**Demo Mode** (No backend required):
-- All features work with local state
-- Data persists in localStorage
-- Perfect for testing and presentations
-
-**Live Mode** (With backend):
-- Real PostgreSQL database
-- Agent orchestrator running
-- AI-powered task execution
-- Blockchain integration (testnet)
-
-## 📝 API Reference
-
-See [Backend README](./backend/README.md) for full API documentation.
-
-### Quick Examples
+### 1. Create Agent Identity
+Assign your AI agent an ERC-8004 identity and a non-custodial ERC-4337 smart wallet.
 
 ```typescript
-// Create an agent
-const agent = await api.createAgent({
+const agent = await autonomy.createAgent({
   name: 'Research_Agent',
-  userId: walletAddress,
-  policy: {
-    dailyLimit: 50,
-    perTxLimit: 10,
-    whitelist: ['api.openai.com'],
-    killSwitch: true
-  }
+  wallet: { type: 'ERC-4337' }
 });
-
-// Simulate a transaction
-const result = await api.simulateTransaction({
-  agentId: agent.id,
-  service: 'api.openai.com',
-  amount: 5,
-  type: 'payment'
-});
-// { approved: true, reason: 'All policy checks passed' }
 ```
 
-## 🛣️ Roadmap
+### 2. Define Spending Policies
+Set guardrails: daily limits, per-transaction caps, and whitelisted services.
 
-- [ ] Wallet integration (MetaMask/WalletConnect)
-- [ ] Smart contract deployment
-- [ ] Multi-chain support
-- [ ] Team/organization features
-- [ ] Advanced analytics dashboard
-- [ ] Webhook notifications
-- [ ] Mobile app
+```typescript
+await autonomy.setPolicy(agent.id, {
+  dailyLimit: 50,          // Max $50/day
+  perTxLimit: 10,          // Max $10 per transaction
+  whitelist: [             // Only these services allowed
+    'api.openai.com',
+    'api.anthropic.com'
+  ],
+  killSwitch: true         // Enable emergency freeze
+});
+```
 
-## 🤝 Contributing
+### 3. Agent Transacts Autonomously
+When your agent needs to spend money, it requests approval from Autonomy.
 
-Contributions are welcome! Please read our contributing guidelines first.
+```typescript
+// Before every paid API call:
+const payment = await autonomy.requestPayment({
+  service: 'api.openai.com',
+  amount: 0.05
+});
 
-## 📄 License
+if (payment.approved) {
+  // Safe to proceed
+  await openai.chat.completions.create({...});
+} else {
+  // Handle rejection
+  console.log('Blocked:', payment.reason);
+}
+```
 
-MIT License - see [LICENSE](./LICENSE) for details.
+---
+
+## Policy Examples
+
+| Scenario | Policy | Request | Result |
+|----------|--------|---------|--------|
+| Daily limit exceeded | `dailyLimit: $50` | $48 spent + $5 request | ❌ BLOCKED |
+| Service not whitelisted | `whitelist: ['api.openai.com']` | Payment to `malicious.xyz` | ❌ BLOCKED |
+| Per-tx limit exceeded | `perTxLimit: $10` | $25 payment | ❌ BLOCKED |
+| All checks pass | `$50 daily, $10 per-tx, openai whitelisted` | $5 to openai | ✅ APPROVED |
+
+---
+
+## x402 Payment Protocol
+
+Autonomy integrates with the **x402 HTTP payment protocol** for seamless agent payments:
+
+```typescript
+// Wrap your HTTP client with x402 middleware
+const response = await x402.fetch('https://paid-api.example.com/data');
+
+// If 402 Payment Required is returned:
+// 1. Autonomy validates the payment against policies
+// 2. If approved, payment is executed automatically
+// 3. Request is retried with payment proof
+// 4. If blocked, error is thrown with reason
+```
+
+---
+
+## Tech Stack
+
+| Layer | Technology |
+|-------|------------|
+| **Identity** | ERC-8004 (Agent Identity Standard) |
+| **Wallet** | ERC-4337 (Account Abstraction) |
+| **Payments** | x402 (HTTP Payment Protocol) |
+| **Blockchain** | Polygon zkEVM, Ethereum, Base |
+| **Infrastructure** | Lit Protocol, The Graph, IPFS |
+
+---
+
+## Dashboard Features
+
+- **Agent Management**: Create, pause, freeze, delete agents
+- **Real-time Monitoring**: Watch transactions as they happen
+- **Policy Editor**: Adjust limits and whitelists
+- **Audit Log**: Complete history of all transactions
+- **Kill Switch**: One-click emergency freeze
+
+---
+
+## SDK Installation
+
+```bash
+npm install @autonomy/sdk
+```
+
+```typescript
+import { AutonomySDK } from '@autonomy/sdk';
+
+const autonomy = new AutonomySDK({
+  apiUrl: 'https://api.autonomy.finance',
+  agentId: 'your-agent-id'
+});
+```
+
+---
+
+## Why Autonomy?
+
+| Without Autonomy | With Autonomy |
+|------------------|---------------|
+| Agents have unlimited access to funds | Programmable spending limits |
+| No visibility into agent spending | Complete audit trail |
+| Can't stop a misbehaving agent | Instant kill switch |
+| Trust the agent completely | Verify every transaction |
+| Single point of failure | Non-custodial security |
+
+---
+
+## Use Cases
+
+- **AI Research Assistants**: Cap API spending for research tasks
+- **Trading Bots**: Limit trade sizes and approved exchanges
+- **Customer Service Agents**: Whitelist only CRM and support APIs
+- **Content Generation**: Budget limits for image/video generation APIs
+- **Enterprise AI**: Organization-wide spending controls and audit compliance
+
+---
+
+## License
+
+MIT License
 
 ---
 
