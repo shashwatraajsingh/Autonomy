@@ -1,0 +1,78 @@
+// Database Schema for Autonomy Platform
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+model User {
+  id            String   @id @default(cuid())
+  walletAddress String   @unique
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  agents        Agent[]
+  transactions  Transaction[]
+}
+
+model Agent {
+  id              String   @id @default(cuid())
+  name            String
+  status          String   @default("active") // active, paused, frozen
+  walletAddress   String   @unique
+  privateKeyEnc   String   // Encrypted private key
+  userId          String
+  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  policy          Policy?
+  transactions    Transaction[]
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@index([userId])
+  @@index([walletAddress])
+}
+
+model Policy {
+  id            String   @id @default(cuid())
+  agentId       String   @unique
+  agent         Agent    @relation(fields: [agentId], references: [id], onDelete: Cascade)
+  dailyLimit    Float
+  perTxLimit    Float
+  whitelist     String[] // Array of allowed domains/addresses
+  killSwitch    Boolean  @default(true)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+}
+
+model Transaction {
+  id            String   @id @default(cuid())
+  agentId       String
+  agent         Agent    @relation(fields: [agentId], references: [id], onDelete: Cascade)
+  userId        String
+  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  service       String
+  amount        Float
+  status        String   // approved, blocked, pending
+  reason        String?
+  txHash        String?  // Blockchain transaction hash
+  metadata      Json?    // Additional data
+  createdAt     DateTime @default(now())
+
+  @@index([agentId])
+  @@index([userId])
+  @@index([createdAt])
+}
+
+model AgentLog {
+  id        String   @id @default(cuid())
+  agentId   String
+  level     String   // info, warn, error
+  message   String
+  metadata  Json?
+  createdAt DateTime @default(now())
+
+  @@index([agentId])
+  @@index([createdAt])
+}
