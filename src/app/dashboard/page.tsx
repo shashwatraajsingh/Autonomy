@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { motion, AnimatePresence } from 'framer-motion';
+import { useAccount } from 'wagmi';
 import {
     ArrowLeft,
     Plus,
@@ -13,17 +14,19 @@ import {
     ShieldCheck,
     Activity,
     Wallet,
-    Clock,
     ChevronRight,
     RefreshCw,
     Server,
     Cloud,
     X,
-    Zap
+    Zap,
+    Lock
 } from 'lucide-react';
 import { useAutonomy } from '@/lib/AutonomyContext';
+import { WalletConnect } from '@/components/WalletConnect';
 
 export default function DashboardPage() {
+    const { isConnected, address } = useAccount();
     const {
         agents,
         transactions,
@@ -102,6 +105,24 @@ export default function DashboardPage() {
         );
     }
 
+    // Wallet not connected
+    if (!isConnected) {
+        return (
+            <div className="min-h-screen bg-[#11111b] pt-24 pb-12 flex items-center justify-center">
+                <div className="max-w-md text-center px-6">
+                    <div className="w-20 h-20 bg-[#212134] rounded-full flex items-center justify-center mx-auto mb-6">
+                        <Lock className="w-10 h-10 text-[#4945ff]" />
+                    </div>
+                    <h1 className="text-2xl font-bold text-white mb-4">Connect Your Wallet</h1>
+                    <p className="text-[#a5a5ba] mb-8">
+                        Connect your wallet to manage your AI agents, set spending policies, and monitor transactions.
+                    </p>
+                    <WalletConnect />
+                </div>
+            </div>
+        );
+    }
+
     const totalSpent = agents.reduce((sum, a) => sum + a.spentToday, 0);
     const totalLimit = agents.reduce((sum, a) => sum + a.policy.dailyLimit, 0) || 1;
 
@@ -123,11 +144,13 @@ export default function DashboardPage() {
                                     </span>
                                 ) : (
                                     <span className="flex items-center gap-1.5 text-xs font-medium text-yellow-400 bg-yellow-400/10 px-2 py-1 rounded-full">
-                                        <Cloud className="w-3 h-3" /> Demo
+                                        <Cloud className="w-3 h-3" /> Local
                                     </span>
                                 )}
                             </h1>
-                            <p className="text-sm text-[#a5a5ba]">Manage your AI agents and monitor spending.</p>
+                            <p className="text-sm text-[#a5a5ba]">
+                                Connected: <span className="font-mono text-[#4945ff]">{address?.slice(0, 6)}...{address?.slice(-4)}</span>
+                            </p>
                         </div>
                     </div>
                     <div className="flex items-center gap-3">
@@ -231,7 +254,7 @@ export default function DashboardPage() {
                                     >
                                         <div className="flex items-start justify-between mb-4">
                                             <div className="flex items-center gap-3">
-                                                <div className={`w-3 h-3 rounded-full animate-pulse ${agent.status === 'active' ? 'bg-green-500' :
+                                                <div className={`w-3 h-3 rounded-full ${agent.status === 'active' ? 'bg-green-500 animate-pulse' :
                                                         agent.status === 'paused' ? 'bg-yellow-500' : 'bg-red-500'
                                                     }`} />
                                                 <div>

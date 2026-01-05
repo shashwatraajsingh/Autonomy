@@ -3,13 +3,13 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { Shield, Menu, X, Github } from 'lucide-react';
+import { WalletConnect } from './WalletConnect';
 
 const navLinks = [
     { name: 'How It Works', href: '#how-it-works' },
     { name: 'Features', href: '#features' },
     { name: 'Integrations', href: '#tech-stack' },
-    { name: 'Docs', href: '#' },
-    { name: 'Pricing', href: '#' },
+    { name: 'Docs', href: '/docs' },
 ];
 
 export function Navbar() {
@@ -60,7 +60,7 @@ export function Navbar() {
                 {/* Actions */}
                 <div className="hidden md:flex items-center gap-4">
                     <a
-                        href="https://github.com"
+                        href="https://github.com/shashwatraajsingh/Autonomy"
                         target="_blank"
                         rel="noopener noreferrer"
                         className="flex items-center gap-2 text-[#a5a5ba] hover:text-white transition-colors"
@@ -73,12 +73,7 @@ export function Navbar() {
                     >
                         Dashboard
                     </Link>
-                    <Link
-                        href="/demo"
-                        className="text-sm font-bold text-white bg-[#4945ff] hover:bg-[#5d59ff] transition-colors px-5 py-2.5 rounded-none"
-                    >
-                        Launch App
-                    </Link>
+                    <WalletConnect />
                 </div>
 
                 {/* Mobile Toggle */}
@@ -105,8 +100,8 @@ export function Navbar() {
                             </Link>
                         ))}
                         <hr className="border-[#2e2e48]" />
-                        <Link href="/demo" className="text-center font-bold text-white bg-[#4945ff] py-3 rounded-none">
-                            Get Started
+                        <Link href="/dashboard" className="text-center font-bold text-white bg-[#4945ff] py-3 rounded-lg">
+                            Launch App
                         </Link>
                     </div>
                 </div>

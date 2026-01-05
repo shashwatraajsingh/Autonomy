@@ -1,74 +1,83 @@
 'use client';
 
 import React, { createContext, useContext, useState, useEffect, useCallback, ReactNode } from 'react';
-import { api, Agent, Transaction, Policy, ValidationResult } from './api';
+import { useAccount } from 'wagmi';
+
+// Types
+export interface Policy {
+    id?: string;
+    dailyLimit: number;
+    perTxLimit: number;
+    whitelist: string[];
+    killSwitch: boolean;
+}
+
+export interface Agent {
+    id: string;
+    name: string;
+    status: 'active' | 'paused' | 'frozen';
+    walletAddress: string;
+    policy: Policy;
+    spentToday: number;
+    createdAt: string;
+    _count?: { transactions: number };
+}
+
+export interface Transaction {
+    id: string;
+    agentId: string;
+    service: string;
+    amount: number;
+    status: 'approved' | 'blocked' | 'pending';
+    reason: string;
+    txHash?: string;
+    createdAt: string;
+    agent?: { name: string; walletAddress: string };
+}
+
+export interface ValidationResult {
+    approved: boolean;
+    reason: string;
+    policyChecks: {
+        whitelistCheck: boolean;
+        perTxLimitCheck: boolean;
+        dailyLimitCheck: boolean;
+        agentStatusCheck: boolean;
+    };
+}
 
 interface AutonomyState {
-    // State
     agents: Agent[];
     transactions: Transaction[];
     isLoading: boolean;
     isBackendConnected: boolean;
     error: string | null;
-
-    // Agent operations
-    addAgent: (data: { name: string; policy: Omit<Policy, 'id'> }) => Promise<Agent | null>;
-    updateAgent: (id: string, updates: Partial<{ name: string; status: string }>) => Promise<void>;
-    removeAgent: (id: string) => Promise<void>;
-    activateKillSwitch: (id: string) => Promise<void>;
-
-    // Transaction operations
-    simulateTransaction: (agentId: string, service: string, amount: number) => Promise<ValidationResult | null>;
-    executeTransaction: (agentId: string, task: { type: string; service: string; amount: number }) => Promise<any>;
-
-    // Data fetching
-    refreshAgents: () => Promise<void>;
-    refreshTransactions: () => Promise<void>;
-
-    // Stats
+    userAddress: string | null;
+    isWalletConnected: boolean;
     stats: {
         totalApproved: number;
         totalBlocked: number;
         spentToday: number;
         totalSpent: number;
     } | null;
+
+    addAgent: (data: { name: string; policy: Omit<Policy, 'id'> }) => Promise<Agent | null>;
+    updateAgent: (id: string, updates: Partial<{ name: string; status: string }>) => Promise<void>;
+    removeAgent: (id: string) => Promise<void>;
+    activateKillSwitch: (id: string) => Promise<void>;
+    simulateTransaction: (agentId: string, service: string, amount: number) => Promise<ValidationResult | null>;
+    executeTransaction: (agentId: string, task: { type: string; service: string; amount: number }) => Promise<unknown>;
+    refreshAgents: () => Promise<void>;
+    refreshTransactions: () => Promise<void>;
 }
 
 const AutonomyContext = createContext<AutonomyState | undefined>(undefined);
 
-// Demo data for when backend is not available
-const DEMO_AGENTS: Agent[] = [
-    {
-        id: 'demo-agent-001',
-        name: 'Research_Agent',
-        status: 'active',
-        walletAddress: '0x1234...5678',
-        policy: {
-            dailyLimit: 50,
-            perTxLimit: 10,
-            whitelist: ['api.openai.com', 'api.anthropic.com'],
-            killSwitch: true,
-        },
-        spentToday: 12.50,
-        createdAt: new Date().toISOString(),
-    },
-    {
-        id: 'demo-agent-002',
-        name: 'Trading_Bot',
-        status: 'active',
-        walletAddress: '0x8765...4321',
-        policy: {
-            dailyLimit: 100,
-            perTxLimit: 25,
-            whitelist: ['api.binance.com', 'api.coingecko.com'],
-            killSwitch: true,
-        },
-        spentToday: 45.00,
-        createdAt: new Date().toISOString(),
-    },
-];
+const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000/api';
 
 export function AutonomyProvider({ children }: { children: ReactNode }) {
+    const { address, isConnected } = useAccount();
+
     const [agents, setAgents] = useState<Agent[]>([]);
     const [transactions, setTransactions] = useState<Transaction[]>([]);
     const [isLoading, setIsLoading] = useState(true);
@@ -77,22 +86,85 @@ export function AutonomyProvider({ children }: { children: ReactNode }) {
     const [stats, setStats] = useState<AutonomyState['stats']>(null);
     const [isHydrated, setIsHydrated] = useState(false);
 
-    // Demo user ID (in production, this would come from wallet connection)
-    const userId = 'demo-user-wallet';
+    const userId = address || 'demo-user';
 
     // Check backend connection
     const checkBackend = useCallback(async () => {
         try {
-            await api.healthCheck();
-            setIsBackendConnected(true);
-            return true;
+            const response = await fetch(`${API_BASE.replace('/api', '')}/health`);
+            if (response.ok) {
+                setIsBackendConnected(true);
+                return true;
+            }
+            setIsBackendConnected(false);
+            return false;
         } catch {
             setIsBackendConnected(false);
             return false;
         }
     }, []);
 
-    // Load data
+    // Load data from localStorage
+    const loadFromLocalStorage = useCallback(() => {
+        const key = `autonomy_${userId}`;
+        const savedAgents = localStorage.getItem(`${key}_agents`);
+        const savedTxs = localStorage.getItem(`${key}_transactions`);
+
+        if (savedAgents) {
+            setAgents(JSON.parse(savedAgents));
+        } else {
+            // Default demo agents
+            setAgents([
+                {
+                    id: `agent-${Date.now()}-1`,
+                    name: 'Research_Agent',
+                    status: 'active',
+                    walletAddress: '0x1234...5678',
+                    policy: {
+                        dailyLimit: 50,
+                        perTxLimit: 10,
+                        whitelist: ['api.openai.com', 'api.anthropic.com'],
+                        killSwitch: true,
+                    },
+                    spentToday: 0,
+                    createdAt: new Date().toISOString(),
+                }
+            ]);
+        }
+
+        if (savedTxs) {
+            setTransactions(JSON.parse(savedTxs));
+        }
+
+        // Calculate stats
+        const txs = savedTxs ? JSON.parse(savedTxs) : [];
+        setStats({
+            totalApproved: txs.filter((t: Transaction) => t.status === 'approved').length,
+            totalBlocked: txs.filter((t: Transaction) => t.status === 'blocked').length,
+            spentToday: txs.filter((t: Transaction) => t.status === 'approved').reduce((sum: number, t: Transaction) => sum + t.amount, 0),
+            totalSpent: txs.filter((t: Transaction) => t.status === 'approved').reduce((sum: number, t: Transaction) => sum + t.amount, 0)
+        });
+    }, [userId]);
+
+    // Load from backend
+    const loadFromBackend = useCallback(async () => {
+        try {
+            const [agentsRes, txRes, statsRes] = await Promise.all([
+                fetch(`${API_BASE}/agents?userId=${userId}`).then(r => r.json()),
+                fetch(`${API_BASE}/transactions?userId=${userId}&limit=100`).then(r => r.json()),
+                fetch(`${API_BASE}/transactions/stats?userId=${userId}`).then(r => r.json())
+            ]);
+
+            setAgents(agentsRes.agents || []);
+            setTransactions(txRes.transactions || []);
+            setStats(statsRes.stats || null);
+        } catch (err) {
+            console.error('Backend error:', err);
+            loadFromLocalStorage();
+        }
+    }, [userId, loadFromLocalStorage]);
+
+    // Initialize
     useEffect(() => {
         const init = async () => {
             setIsLoading(true);
@@ -100,25 +172,8 @@ export function AutonomyProvider({ children }: { children: ReactNode }) {
             const backendAvailable = await checkBackend();
 
             if (backendAvailable) {
-                // Load from backend
-                try {
-                    const [agentsRes, txRes, statsRes] = await Promise.all([
-                        api.getAgents(userId),
-                        api.getTransactions({ userId, limit: 100 }),
-                        api.getTransactionStats(userId)
-                    ]);
-
-                    setAgents(agentsRes.agents);
-                    setTransactions(txRes.transactions);
-                    setStats(statsRes.stats);
-                } catch (err: any) {
-                    console.error('Backend error:', err);
-                    setError(err.message);
-                    // Fall back to localStorage
-                    loadFromLocalStorage();
-                }
+                await loadFromBackend();
             } else {
-                // Load from localStorage (demo mode)
                 loadFromLocalStorage();
             }
 
@@ -127,75 +182,55 @@ export function AutonomyProvider({ children }: { children: ReactNode }) {
         };
 
         init();
-    }, [checkBackend]);
+    }, [checkBackend, loadFromBackend, loadFromLocalStorage, address]);
 
-    const loadFromLocalStorage = () => {
-        const savedAgents = localStorage.getItem('autonomy_agents');
-        const savedTxs = localStorage.getItem('autonomy_transactions');
-
-        if (savedAgents) {
-            setAgents(JSON.parse(savedAgents));
-        } else {
-            setAgents(DEMO_AGENTS);
-        }
-
-        if (savedTxs) {
-            setTransactions(JSON.parse(savedTxs));
-        }
-
-        // Calculate stats from local data
-        const txs = savedTxs ? JSON.parse(savedTxs) : [];
-        setStats({
-            totalApproved: txs.filter((t: Transaction) => t.status === 'approved').length,
-            totalBlocked: txs.filter((t: Transaction) => t.status === 'blocked').length,
-            spentToday: txs.filter((t: Transaction) => t.status === 'approved').reduce((sum: number, t: Transaction) => sum + t.amount, 0),
-            totalSpent: txs.filter((t: Transaction) => t.status === 'approved').reduce((sum: number, t: Transaction) => sum + t.amount, 0)
-        });
-    };
-
-    // Save to localStorage when data changes (demo mode)
+    // Save to localStorage
     useEffect(() => {
         if (isHydrated && !isBackendConnected) {
-            localStorage.setItem('autonomy_agents', JSON.stringify(agents));
-            localStorage.setItem('autonomy_transactions', JSON.stringify(transactions));
+            const key = `autonomy_${userId}`;
+            localStorage.setItem(`${key}_agents`, JSON.stringify(agents));
+            localStorage.setItem(`${key}_transactions`, JSON.stringify(transactions));
         }
-    }, [agents, transactions, isHydrated, isBackendConnected]);
+    }, [agents, transactions, isHydrated, isBackendConnected, userId]);
 
     const refreshAgents = async () => {
         if (isBackendConnected) {
-            const res = await api.getAgents(userId);
-            setAgents(res.agents);
+            const res = await fetch(`${API_BASE}/agents?userId=${userId}`).then(r => r.json());
+            setAgents(res.agents || []);
         }
     };
 
     const refreshTransactions = async () => {
         if (isBackendConnected) {
             const [txRes, statsRes] = await Promise.all([
-                api.getTransactions({ userId, limit: 100 }),
-                api.getTransactionStats(userId)
+                fetch(`${API_BASE}/transactions?userId=${userId}&limit=100`).then(r => r.json()),
+                fetch(`${API_BASE}/transactions/stats?userId=${userId}`).then(r => r.json())
             ]);
-            setTransactions(txRes.transactions);
-            setStats(statsRes.stats);
+            setTransactions(txRes.transactions || []);
+            setStats(statsRes.stats || null);
         }
     };
 
     const addAgent = async (data: { name: string; policy: Omit<Policy, 'id'> }): Promise<Agent | null> => {
         try {
             if (isBackendConnected) {
-                const res = await api.createAgent({
-                    name: data.name,
-                    userId,
-                    policy: data.policy as Policy
-                });
+                const res = await fetch(`${API_BASE}/agents`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        name: data.name,
+                        userId,
+                        policy: data.policy
+                    })
+                }).then(r => r.json());
                 await refreshAgents();
                 return res.agent;
             } else {
-                // Demo mode
                 const newAgent: Agent = {
-                    id: `demo-${Date.now()}`,
+                    id: `agent-${Date.now()}`,
                     name: data.name,
                     status: 'active',
-                    walletAddress: `0x${Math.random().toString(16).slice(2, 10)}...`,
+                    walletAddress: `0x${Math.random().toString(16).slice(2, 10)}...${Math.random().toString(16).slice(2, 6)}`,
                     policy: data.policy as Policy,
                     spentToday: 0,
                     createdAt: new Date().toISOString()
@@ -203,8 +238,8 @@ export function AutonomyProvider({ children }: { children: ReactNode }) {
                 setAgents(prev => [...prev, newAgent]);
                 return newAgent;
             }
-        } catch (err: any) {
-            setError(err.message);
+        } catch (err: unknown) {
+            setError(err instanceof Error ? err.message : 'Unknown error');
             return null;
         }
     };
@@ -212,52 +247,57 @@ export function AutonomyProvider({ children }: { children: ReactNode }) {
     const updateAgent = async (id: string, updates: Partial<{ name: string; status: string }>) => {
         try {
             if (isBackendConnected) {
-                await api.updateAgent(id, updates);
+                await fetch(`${API_BASE}/agents/${id}`, {
+                    method: 'PATCH',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(updates)
+                });
                 await refreshAgents();
             } else {
-                // Demo mode
                 setAgents(prev => prev.map(a => a.id === id ? { ...a, ...updates } as Agent : a));
             }
-        } catch (err: any) {
-            setError(err.message);
+        } catch (err: unknown) {
+            setError(err instanceof Error ? err.message : 'Unknown error');
         }
     };
 
     const removeAgent = async (id: string) => {
         try {
             if (isBackendConnected) {
-                await api.deleteAgent(id);
+                await fetch(`${API_BASE}/agents/${id}`, { method: 'DELETE' });
                 await refreshAgents();
             } else {
-                // Demo mode
                 setAgents(prev => prev.filter(a => a.id !== id));
             }
-        } catch (err: any) {
-            setError(err.message);
+        } catch (err: unknown) {
+            setError(err instanceof Error ? err.message : 'Unknown error');
         }
     };
 
     const activateKillSwitch = async (id: string) => {
         try {
             if (isBackendConnected) {
-                await api.activateKillSwitch(id);
+                await fetch(`${API_BASE}/agents/${id}/kill-switch`, { method: 'POST' });
                 await refreshAgents();
             } else {
-                // Demo mode
                 setAgents(prev => prev.map(a => a.id === id ? { ...a, status: 'frozen' as const } : a));
             }
-        } catch (err: any) {
-            setError(err.message);
+        } catch (err: unknown) {
+            setError(err instanceof Error ? err.message : 'Unknown error');
         }
     };
 
     const simulateTransaction = async (agentId: string, service: string, amount: number): Promise<ValidationResult | null> => {
         try {
             if (isBackendConnected) {
-                const res = await api.simulateTransaction({ agentId, service, amount, type: 'payment' });
+                const res = await fetch(`${API_BASE}/transactions/simulate`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ agentId, service, amount, type: 'payment' })
+                }).then(r => r.json());
                 return res.validation;
             } else {
-                // Demo mode - local policy check
+                // Local policy check
                 const agent = agents.find(a => a.id === agentId);
                 if (!agent) {
                     return {
@@ -291,7 +331,7 @@ export function AutonomyProvider({ children }: { children: ReactNode }) {
                     reason = `Would exceed daily limit ($${agent.policy.dailyLimit})`;
                 }
 
-                // Record transaction locally
+                // Record transaction
                 const tx: Transaction = {
                     id: `tx-${Date.now()}`,
                     agentId,
@@ -312,8 +352,8 @@ export function AutonomyProvider({ children }: { children: ReactNode }) {
 
                 return { approved, reason, policyChecks: checks };
             }
-        } catch (err: any) {
-            setError(err.message);
+        } catch (err: unknown) {
+            setError(err instanceof Error ? err.message : 'Unknown error');
             return null;
         }
     };
@@ -321,15 +361,18 @@ export function AutonomyProvider({ children }: { children: ReactNode }) {
     const executeTransaction = async (agentId: string, task: { type: string; service: string; amount: number }) => {
         try {
             if (isBackendConnected) {
-                const result = await api.executeAgentTask(agentId, task);
+                const result = await fetch(`${API_BASE}/agents/${agentId}/execute`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(task)
+                }).then(r => r.json());
                 await refreshTransactions();
                 return result;
             } else {
-                // Demo mode - just simulate
                 return await simulateTransaction(agentId, task.service, task.amount);
             }
-        } catch (err: any) {
-            setError(err.message);
+        } catch (err: unknown) {
+            setError(err instanceof Error ? err.message : 'Unknown error');
             return null;
         }
     };
@@ -341,6 +384,8 @@ export function AutonomyProvider({ children }: { children: ReactNode }) {
             isLoading,
             isBackendConnected,
             error,
+            userAddress: address || null,
+            isWalletConnected: isConnected,
             stats,
             addAgent,
             updateAgent,

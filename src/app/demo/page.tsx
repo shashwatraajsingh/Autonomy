@@ -3,12 +3,11 @@
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import Link from 'next/link';
+import { useAccount } from 'wagmi';
 import {
     ArrowLeft,
-    Play,
     Activity,
     Shield,
-    Wallet,
     CheckCircle2,
     XCircle,
     Terminal,
@@ -17,9 +16,11 @@ import {
     Zap,
     AlertTriangle,
     Server,
-    Cloud
+    Cloud,
+    Lock
 } from 'lucide-react';
 import { useAutonomy } from '@/lib/AutonomyContext';
+import { WalletConnect } from '@/components/WalletConnect';
 
 const SAMPLE_SERVICES = [
     { name: 'api.openai.com', label: 'OpenAI API', type: 'AI' },
@@ -31,6 +32,7 @@ const SAMPLE_SERVICES = [
 ];
 
 export default function DemoPage() {
+    const { isConnected, address } = useAccount();
     const { agents, transactions, simulateTransaction, updateAgent, activateKillSwitch, isBackendConnected, isLoading } = useAutonomy();
     const [selectedAgentId, setSelectedAgentId] = useState<string>('');
     const [selectedService, setSelectedService] = useState(SAMPLE_SERVICES[0].name);
@@ -57,7 +59,7 @@ export default function DemoPage() {
         setIsProcessing(true);
         setLastResult(null);
 
-        await new Promise(r => setTimeout(r, 800)); // Dramatic pause
+        await new Promise(r => setTimeout(r, 800));
 
         const result = await simulateTransaction(selectedAgentId, selectedService, amount);
         if (result) {
@@ -89,6 +91,24 @@ export default function DemoPage() {
         );
     }
 
+    // Wallet not connected
+    if (!isConnected) {
+        return (
+            <div className="min-h-screen bg-[#11111b] pt-24 pb-12 flex items-center justify-center">
+                <div className="max-w-md text-center px-6">
+                    <div className="w-20 h-20 bg-[#212134] rounded-full flex items-center justify-center mx-auto mb-6">
+                        <Lock className="w-10 h-10 text-[#4945ff]" />
+                    </div>
+                    <h1 className="text-2xl font-bold text-white mb-4">Connect Your Wallet</h1>
+                    <p className="text-[#a5a5ba] mb-8">
+                        Connect your wallet to access the policy simulator and test your agent governance rules.
+                    </p>
+                    <WalletConnect />
+                </div>
+            </div>
+        );
+    }
+
     const approvedCount = transactions.filter(t => t.status === 'approved').length;
     const blockedCount = transactions.filter(t => t.status === 'blocked').length;
 
@@ -106,15 +126,17 @@ export default function DemoPage() {
                                 Policy Simulator
                                 {isBackendConnected ? (
                                     <span className="flex items-center gap-1.5 text-xs font-medium text-green-400 bg-green-400/10 px-2 py-1 rounded-full">
-                                        <Server className="w-3 h-3" /> Backend Connected
+                                        <Server className="w-3 h-3" /> Live
                                     </span>
                                 ) : (
                                     <span className="flex items-center gap-1.5 text-xs font-medium text-yellow-400 bg-yellow-400/10 px-2 py-1 rounded-full">
-                                        <Cloud className="w-3 h-3" />
+                                        <Cloud className="w-3 h-3" /> Local
                                     </span>
                                 )}
                             </h1>
-                            <p className="text-sm text-[#a5a5ba]">Test agent governance rules with real policy enforcement.</p>
+                            <p className="text-sm text-[#a5a5ba]">
+                                Test agent governance rules • Connected: <span className="font-mono text-[#4945ff]">{address?.slice(0, 6)}...{address?.slice(-4)}</span>
+                            </p>
                         </div>
                     </div>
                 </div>
@@ -156,8 +178,8 @@ export default function DemoPage() {
                                                 <div className="flex items-center justify-between mb-3">
                                                     <span className="text-xs text-[#666687] uppercase">Status</span>
                                                     <span className={`px-2 py-0.5 rounded text-xs font-bold ${selectedAgent.status === 'active' ? 'bg-green-400/10 text-green-400' :
-                                                        selectedAgent.status === 'paused' ? 'bg-yellow-400/10 text-yellow-400' :
-                                                            'bg-red-400/10 text-red-400'
+                                                            selectedAgent.status === 'paused' ? 'bg-yellow-400/10 text-yellow-400' :
+                                                                'bg-red-400/10 text-red-400'
                                                         }`}>
                                                         {selectedAgent.status.toUpperCase()}
                                                     </span>
@@ -184,8 +206,8 @@ export default function DemoPage() {
                                                     <div className="w-full h-2 bg-[#212134] rounded-full overflow-hidden">
                                                         <div
                                                             className={`h-full transition-all ${(selectedAgent.spentToday / selectedAgent.policy.dailyLimit) > 0.8
-                                                                ? 'bg-red-500'
-                                                                : 'bg-[#4945ff]'
+                                                                    ? 'bg-red-500'
+                                                                    : 'bg-[#4945ff]'
                                                                 }`}
                                                             style={{ width: `${Math.min((selectedAgent.spentToday / selectedAgent.policy.dailyLimit) * 100, 100)}%` }}
                                                         />
@@ -222,8 +244,8 @@ export default function DemoPage() {
                                                 key={s.name}
                                                 onClick={() => setSelectedService(s.name)}
                                                 className={`w-full text-left p-3 rounded-lg border transition-all ${selectedService === s.name
-                                                    ? 'border-[#4945ff] bg-[#4945ff]/10'
-                                                    : 'border-[#2e2e48] bg-[#1a1a2e] hover:border-[#4945ff]/50'
+                                                        ? 'border-[#4945ff] bg-[#4945ff]/10'
+                                                        : 'border-[#2e2e48] bg-[#1a1a2e] hover:border-[#4945ff]/50'
                                                     }`}
                                             >
                                                 <div className="flex justify-between items-center">
@@ -245,8 +267,8 @@ export default function DemoPage() {
                                                 key={v}
                                                 onClick={() => setAmount(v)}
                                                 className={`flex-1 py-2 rounded text-sm font-medium border transition-all ${amount === v
-                                                    ? 'border-[#4945ff] bg-[#4945ff] text-white'
-                                                    : 'border-[#2e2e48] text-[#a5a5ba] hover:border-[#4945ff]/50'
+                                                        ? 'border-[#4945ff] bg-[#4945ff] text-white'
+                                                        : 'border-[#2e2e48] text-[#a5a5ba] hover:border-[#4945ff]/50'
                                                     }`}
                                             >
                                                 ${v}
@@ -290,8 +312,8 @@ export default function DemoPage() {
                                             animate={{ opacity: 1, y: 0 }}
                                             exit={{ opacity: 0 }}
                                             className={`p-4 rounded-lg border ${lastResult.approved
-                                                ? 'border-green-500/30 bg-green-500/10'
-                                                : 'border-red-500/30 bg-red-500/10'
+                                                    ? 'border-green-500/30 bg-green-500/10'
+                                                    : 'border-red-500/30 bg-red-500/10'
                                                 }`}
                                         >
                                             <div className="flex items-center gap-2 mb-2">
@@ -395,8 +417,8 @@ export default function DemoPage() {
                                                 animate={{ opacity: 1, x: 0 }}
                                                 transition={{ delay: i * 0.05 }}
                                                 className={`p-4 rounded-lg border ${tx.status === 'approved'
-                                                    ? 'border-green-500/20 bg-green-500/5'
-                                                    : 'border-red-500/20 bg-red-500/5'
+                                                        ? 'border-green-500/20 bg-green-500/5'
+                                                        : 'border-red-500/20 bg-red-500/5'
                                                     }`}
                                             >
                                                 <div className="flex items-start justify-between mb-2">
