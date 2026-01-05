@@ -163,11 +163,11 @@ const response = await x402.fetch('https://paid-api.example.com/data');
 ## SDK Installation
 
 ```bash
-npm install @autonomy/sdk
+npm install autonomy-ai-sdk
 ```
 
 ```typescript
-import { AutonomySDK } from '@autonomy/sdk';
+import { AutonomySDK } from 'autonomy-ai-sdk';
 
 const autonomy = new AutonomySDK({
   apiUrl: 'https://api.autonomy.finance',

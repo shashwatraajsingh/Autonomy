@@ -1,5 +1,5 @@
 {
-    "name": "@autonomy-ai/sdk",
+    "name": "autonomy-ai-sdk",
     "version": "1.0.0",
     "description": "SDK for integrating AI agents with Autonomy - The Financial Operating System for AI Agents",
     "main": "dist/index.js",

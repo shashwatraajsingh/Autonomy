@@ -1,17 +1,17 @@
-# @autonomy-ai/sdk
+# autonomy-ai-sdk
 
 Official SDK for integrating AI agents with **Autonomy** - The Financial Operating System for AI Agents.
 
 ## Installation
 
 ```bash
-npm install @autonomy-ai/sdk
+npm install autonomy-ai-sdk
 ```
 
 ## Quick Start
 
 ```typescript
-import { AutonomySDK } from '@autonomy-ai/sdk';
+import { AutonomySDK } from 'autonomy-ai-sdk';
 
 // Initialize with your agent credentials
 const autonomy = new AutonomySDK({
@@ -75,7 +75,7 @@ console.log(allowed); // true
 Handle HTTP 402 (Payment Required) responses automatically:
 
 ```typescript
-import { AutonomySDK, X402Middleware } from '@autonomy-ai/sdk';
+import { AutonomySDK, X402Middleware } from 'autonomy-ai-sdk';
 
 const autonomy = new AutonomySDK({ ... });
 const x402 = new X402Middleware(autonomy);

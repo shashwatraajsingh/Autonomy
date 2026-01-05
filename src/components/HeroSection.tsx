@@ -7,7 +7,7 @@ import { useState } from 'react';
 
 export function HeroSection() {
     const [copied, setCopied] = useState(false);
-    const command = 'npx create-autonomy-app@latest';
+    const command = 'npm install autonomy-ai-sdk';
 
     const handleCopy = () => {
         navigator.clipboard.writeText(command);
@@ -168,7 +168,7 @@ export function HeroSection() {
                                 </div>
                                 <pre className="font-mono-tech text-[10px] leading-relaxed text-[#a5a5ba]">
                                     <code>
-                                        <span className="text-[#c099ff]">import</span> {'{'} Autonomy {'}'} <span className="text-[#c099ff]">from</span> <span className="text-[#a9dc76]">'@autonomy/sdk'</span>;
+                                        <span className="text-[#c099ff]">import</span> {'{'} AutonomySDK {'}'} <span className="text-[#c099ff]">from</span> <span className="text-[#a9dc76]">'autonomy-ai-sdk'</span>;
                                         {'\n'}
                                         {'\n'}<span className="text-[#ff7eb6]">const</span> agent = <span className="text-[#ff7eb6]">await</span> Autonomy.create({'{'}
                                         {'\n'}  <span className="text-[#78dce8]">identity</span>: <span className="text-[#a9dc76]">'ERC-8004'</span>,
