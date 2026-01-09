@@ -1,97 +1,94 @@
-# Autonomy - Product Summary
+# Autonomy
 
-## One-Liner
-**Autonomy is the financial operating system for autonomous AI agents — enabling governance, spending limits, and audit trails before AI touches real money.**
+**A Kill Switch Between AI and Your Money**
 
 ---
 
-## What is Autonomy?
+## The Reality
 
-Autonomy is a governance platform that sits between AI agents and their crypto wallets. As AI agents become increasingly autonomous — capable of making API calls, executing trades, and spending money — there's a critical need for guardrails. Autonomy provides those guardrails.
-
-Think of it as a **permission layer for AI spending**. Just like a corporate expense policy, but for AI.
+AI agents can already trade, pay APIs, and move crypto.  
+One hallucination is enough to drain a wallet.  
+We built the firewall that stops that.
 
 ---
 
 ## The Problem
 
-AI agents are becoming autonomous economic actors, but they lack financial controls:
+Today, AI agents have full wallet access.  
+No limits. No approvals. No emergency stop.
 
-| Problem | Risk |
-|---------|------|
-| **No spending limits** | An agent could drain a wallet in minutes |
-| **No service restrictions** | Agents can interact with any API, including malicious ones |
-| **No audit trail** | No visibility into what agents spend money on |
-| **No kill switch** | No way to instantly stop a misbehaving agent |
+**What can go wrong:**
+
+- A trading bot misreads an API → empties a treasury
+- An agent hits a malicious endpoint → funds gone
+- No logs. No accountability. No undo.
+
+We don't let interns spend company money freely.  
+**Why are we letting AI do it?**
 
 ---
 
 ## The Solution
 
-Autonomy provides **programmable governance** for AI agents:
+Autonomy is an **expense policy + kill switch** for AI agents.
 
-### Core Features
+It sits between the agent and the wallet and enforces:
 
-1. **Agent Identity (ERC-8004)**
-   - Each agent gets a unique on-chain identity
-   - Linked to a non-custodial smart wallet (ERC-4337)
+- **Spending limits** — daily caps, per-transaction limits
+- **Allowed services** — whitelist of approved APIs
+- **Emergency shutdown** — one-click kill switch
+- **Full audit trail** — every transaction logged
 
-2. **Policy Engine**
-   - Daily spending limits
-   - Per-transaction caps
-   - Service whitelisting
-   - Kill switch for emergencies
-
-3. **Real-Time Enforcement**
-   - Every transaction validated against policies
-   - Blocked transactions logged with reasons
-   - Zero-latency policy checks
-
-4. **Complete Audit Trail**
-   - Every transaction recorded
-   - Approval/rejection reasons
-   - Full history for compliance
+AI can act fast — but never outside your rules.
 
 ---
 
-## Target Users
+## What's Built
 
-| User Type | Use Case |
-|-----------|----------|
-| **AI Developers** | Add governance to their autonomous agents |
-| **Enterprises** | Manage fleets of AI agents with spending controls |
-| **DeFi Projects** | Secure AI trading bots and automated systems |
-| **DAOs** | Delegate AI agent permissions to the DAO |
-
----
-
-## Key Differentiators
-
-1. **Non-Custodial** — Users own their keys, Autonomy never touches funds
-2. **Chain-Agnostic** — Works on Polygon, Ethereum, Base, and more
-3. **x402 Native** — Built for the HTTP payment protocol era
-4. **SDK-First** — Simple API for any AI agent to integrate
+- **Dashboard** — Create agents, set policies, monitor transactions, hit kill switch
+- **Policy Engine** — Real-time validation of every transaction
+- **SDK** — Drop-in TypeScript SDK with x402 middleware for AI agents
+- **Backend API** — Full REST API for agent management
+- **Audit Logging** — Every transaction recorded with approval/rejection reason
 
 ---
 
-## Technology Stack
+## What Makes This Different
 
-- **Frontend**: Next.js, React, Wagmi, Viem
-- **Backend**: Express, TypeScript, Prisma, PostgreSQL
-- **Blockchain**: ERC-4337 (Account Abstraction), ERC-8004 (Agent Identity)
-- **Payments**: x402 HTTP Payment Protocol
+- **External enforcement** — policies live outside the agent, so bugs, prompts, or model updates cannot bypass them
+- **Non-custodial** — we never touch your funds
+- **Real-time enforcement** — bad transactions never hit the chain
+- **AI-native** — built for autonomous agents, not humans
+- **x402-ready** — designed for HTTP payments at scale
+
+---
+
+## Who Needs This
+
+If your AI can spend real money, you need this before it fails.
+
+---
+
+## Under the Hood (Optional)
+
+| Layer | Technology |
+|-------|------------|
+| **Frontend** | Next.js, React, Wagmi |
+| **Backend** | Express, TypeScript, Prisma, PostgreSQL |
+| **SDK** | TypeScript, x402 middleware |
+| **Roadmap** | ERC-4337 (Account Abstraction), On-chain identity |
 
 ---
 
 ## Status
 
-✅ Frontend with wallet connection  
-✅ Policy simulation engine  
-✅ Backend API  
+✅ Policy enforcement engine  
+✅ Dashboard with kill switch  
 ✅ SDK for agent integration  
+✅ Full REST API  
 ⏳ Smart contract deployment  
 ⏳ Mainnet launch  
 
 ---
 
-**Autonomy: Control your AI agents before they control your wallet.**
+**Autonomy gives AI freedom — without giving it your wallet.**

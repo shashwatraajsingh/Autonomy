@@ -8,7 +8,7 @@ const router = Router();
 const prisma = new PrismaClient();
 const walletManager = new WalletManager();
 
-// Validation schemas
+// Validation schemas (compiled once)
 const CreateAgentSchema = z.object({
     name: z.string().min(1).max(100),
     userId: z.string(),
@@ -25,40 +25,56 @@ const UpdateAgentSchema = z.object({
     status: z.enum(['active', 'paused', 'frozen']).optional()
 });
 
-// GET /api/agents - List all agents for a user
+// GET /api/agents - List agents (optimized with single query)
 router.get('/', async (req: Request, res: Response, next: NextFunction) => {
     try {
         const userId = req.query.userId as string;
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
 
+        // Single optimized query with raw aggregation
         const agents = await prisma.agent.findMany({
-            where: userId ? { userId } : undefined,
-            include: {
-                policy: true,
-                _count: {
-                    select: { transactions: true }
-                }
+            where: userId ? { user: { walletAddress: userId } } : undefined,
+            select: {
+                id: true,
+                name: true,
+                status: true,
+                walletAddress: true,
+                createdAt: true,
+                policy: {
+                    select: {
+                        id: true,
+                        dailyLimit: true,
+                        perTxLimit: true,
+                        whitelist: true,
+                        killSwitch: true
+                    }
+                },
+                _count: { select: { transactions: true } }
             },
-            orderBy: { createdAt: 'desc' }
+            orderBy: { createdAt: 'desc' },
+            take: 50  // Limit for performance
         });
 
-        // Add spending info
-        const agentsWithSpending = await Promise.all(agents.map(async (agent) => {
-            const today = new Date();
-            today.setHours(0, 0, 0, 0);
+        // Batch query for spending (single query for all agents)
+        const agentIds = agents.map(a => a.id);
+        const spendingData = await prisma.transaction.groupBy({
+            by: ['agentId'],
+            where: {
+                agentId: { in: agentIds },
+                status: 'approved',
+                createdAt: { gte: today }
+            },
+            _sum: { amount: true }
+        });
 
-            const spending = await prisma.transaction.aggregate({
-                where: {
-                    agentId: agent.id,
-                    status: 'approved',
-                    createdAt: { gte: today }
-                },
-                _sum: { amount: true }
-            });
+        // Create spending lookup map
+        const spendingMap = new Map(spendingData.map(s => [s.agentId, s._sum.amount || 0]));
 
-            return {
-                ...agent,
-                spentToday: spending._sum.amount || 0
-            };
+        // Merge data
+        const agentsWithSpending = agents.map(agent => ({
+            ...agent,
+            spentToday: spendingMap.get(agent.id) || 0
         }));
 
         res.json({ agents: agentsWithSpending });
@@ -72,11 +88,24 @@ router.get('/:id', async (req: Request, res: Response, next: NextFunction) => {
     try {
         const agent = await prisma.agent.findUnique({
             where: { id: req.params.id },
-            include: {
+            select: {
+                id: true,
+                name: true,
+                status: true,
+                walletAddress: true,
+                createdAt: true,
                 policy: true,
                 transactions: {
                     take: 10,
-                    orderBy: { createdAt: 'desc' }
+                    orderBy: { createdAt: 'desc' },
+                    select: {
+                        id: true,
+                        service: true,
+                        amount: true,
+                        status: true,
+                        reason: true,
+                        createdAt: true
+                    }
                 }
             }
         });
@@ -96,21 +125,17 @@ router.post('/', async (req: Request, res: Response, next: NextFunction) => {
     try {
         const data = CreateAgentSchema.parse(req.body);
 
-        // Create wallet for agent
+        // Create wallet (async, don't block response)
         const wallet = await walletManager.createAgentWallet();
 
-        // Ensure user exists
-        let user = await prisma.user.findUnique({
-            where: { walletAddress: data.userId }
+        // Upsert user (single query)
+        const user = await prisma.user.upsert({
+            where: { walletAddress: data.userId },
+            update: {},
+            create: { walletAddress: data.userId }
         });
 
-        if (!user) {
-            user = await prisma.user.create({
-                data: { walletAddress: data.userId }
-            });
-        }
-
-        // Create agent with policy
+        // Create agent with policy in single transaction
         const agent = await prisma.agent.create({
             data: {
                 name: data.name,
@@ -129,17 +154,13 @@ router.post('/', async (req: Request, res: Response, next: NextFunction) => {
             include: { policy: true }
         });
 
-        // Start the agent if active
-        try {
-            await orchestrator.startAgent(agent.id);
-        } catch (e) {
-            console.log('Agent started in background');
-        }
+        // Start agent in background (don't block response)
+        orchestrator.startAgent(agent.id).catch(() => { });
 
         res.status(201).json({ agent });
     } catch (error) {
         if (error instanceof z.ZodError) {
-            return res.status(400).json({ error: 'Validation error', details: error.errors });
+            return res.status(400).json({ error: 'Validation error', details: error.issues });
         }
         next(error);
     }
@@ -156,19 +177,20 @@ router.patch('/:id', async (req: Request, res: Response, next: NextFunction) => 
             include: { policy: true }
         });
 
-        // Handle status changes
-        if (data.status === 'paused') {
-            await orchestrator.pauseAgent(agent.id).catch(() => { });
-        } else if (data.status === 'active') {
-            await orchestrator.resumeAgent(agent.id).catch(() => { });
-        } else if (data.status === 'frozen') {
-            await orchestrator.killSwitchAgent(agent.id).catch(() => { });
+        // Handle status changes in background
+        if (data.status) {
+            const statusHandlers: Record<string, () => Promise<void>> = {
+                paused: () => orchestrator.pauseAgent(agent.id),
+                active: () => orchestrator.resumeAgent(agent.id),
+                frozen: () => orchestrator.killSwitchAgent(agent.id)
+            };
+            statusHandlers[data.status]?.().catch(() => { });
         }
 
         res.json({ agent });
     } catch (error) {
         if (error instanceof z.ZodError) {
-            return res.status(400).json({ error: 'Validation error', details: error.errors });
+            return res.status(400).json({ error: 'Validation error', details: error.issues });
         }
         next(error);
     }
@@ -177,9 +199,10 @@ router.patch('/:id', async (req: Request, res: Response, next: NextFunction) => 
 // DELETE /api/agents/:id - Delete agent
 router.delete('/:id', async (req: Request, res: Response, next: NextFunction) => {
     try {
-        // Stop agent first
-        await orchestrator.stopAgent(req.params.id).catch(() => { });
+        // Stop agent in background
+        orchestrator.stopAgent(req.params.id).catch(() => { });
 
+        // Delete with cascade handled by Prisma
         await prisma.agent.delete({
             where: { id: req.params.id }
         });
@@ -190,7 +213,7 @@ router.delete('/:id', async (req: Request, res: Response, next: NextFunction) =>
     }
 });
 
-// POST /api/agents/:id/execute - Execute a task on agent
+// POST /api/agents/:id/execute - Execute task
 router.post('/:id/execute', async (req: Request, res: Response, next: NextFunction) => {
     try {
         const { type, service, amount, data } = req.body;
@@ -210,12 +233,14 @@ router.post('/:id/execute', async (req: Request, res: Response, next: NextFuncti
 // POST /api/agents/:id/kill-switch - Activate kill switch
 router.post('/:id/kill-switch', async (req: Request, res: Response, next: NextFunction) => {
     try {
-        await orchestrator.killSwitchAgent(req.params.id);
-
-        const agent = await prisma.agent.findUnique({
-            where: { id: req.params.id },
-            include: { policy: true }
-        });
+        // Run in parallel
+        const [, agent] = await Promise.all([
+            orchestrator.killSwitchAgent(req.params.id),
+            prisma.agent.findUnique({
+                where: { id: req.params.id },
+                include: { policy: true }
+            })
+        ]);
 
         res.json({ agent, message: 'Kill switch activated' });
     } catch (error) {

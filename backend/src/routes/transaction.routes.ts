@@ -1,29 +1,51 @@
 import { Router, Request, Response, NextFunction } from 'express';
 import { PrismaClient } from '@prisma/client';
-import { z } from 'zod';
 import { PolicyEnforcer } from '../services/PolicyEnforcer';
 
 const router = Router();
 const prisma = new PrismaClient();
 const policyEnforcer = new PolicyEnforcer(prisma);
 
-// GET /api/transactions - List transactions
+// Cache for stats
+interface StatsCache {
+    stats: {
+        totalApproved: number;
+        totalBlocked: number;
+        spentToday: number;
+        totalSpent: number;
+    };
+    timestamp: number;
+}
+
+const statsCache = new Map<string, StatsCache>();
+const STATS_CACHE_TTL = 10000; // 10 seconds
+
+// GET /api/transactions - List transactions (optimized)
 router.get('/', async (req: Request, res: Response, next: NextFunction) => {
     try {
         const { agentId, userId, status, limit = '50' } = req.query;
+        const limitNum = Math.min(parseInt(limit as string) || 50, 100);
 
         const transactions = await prisma.transaction.findMany({
             where: {
                 ...(agentId && { agentId: agentId as string }),
-                ...(userId && { userId: userId as string }),
+                ...(userId && { agent: { user: { walletAddress: userId as string } } }),
                 ...(status && { status: status as string })
             },
-            include: {
+            select: {
+                id: true,
+                agentId: true,
+                service: true,
+                amount: true,
+                status: true,
+                reason: true,
+                txHash: true,
+                createdAt: true,
                 agent: {
                     select: { name: true, walletAddress: true }
                 }
             },
-            take: parseInt(limit as string),
+            take: limitNum,
             orderBy: { createdAt: 'desc' }
         });
 
@@ -33,66 +55,76 @@ router.get('/', async (req: Request, res: Response, next: NextFunction) => {
     }
 });
 
-// GET /api/transactions/stats - Get transaction statistics
+// GET /api/transactions/stats - Get statistics (with caching)
 router.get('/stats', async (req: Request, res: Response, next: NextFunction) => {
     try {
-        const { userId } = req.query;
+        const userId = (req.query.userId as string) || 'all';
+        const cacheKey = userId;
+
+        // Check cache
+        const cached = statsCache.get(cacheKey);
+        if (cached && Date.now() - cached.timestamp < STATS_CACHE_TTL) {
+            return res.json({ stats: cached.stats });
+        }
+
         const today = new Date();
         today.setHours(0, 0, 0, 0);
 
-        const [totalApproved, totalBlocked, spentToday, allTime] = await Promise.all([
+        const whereBase = userId !== 'all'
+            ? { agent: { user: { walletAddress: userId } } }
+            : {};
+
+        // Single aggregation query for counts and sums
+        const [approvedCount, blockedCount, todaySum, totalSum] = await Promise.all([
             prisma.transaction.count({
-                where: {
-                    ...(userId && { userId: userId as string }),
-                    status: 'approved'
-                }
+                where: { ...whereBase, status: 'approved' }
             }),
             prisma.transaction.count({
-                where: {
-                    ...(userId && { userId: userId as string }),
-                    status: 'blocked'
-                }
+                where: { ...whereBase, status: 'blocked' }
             }),
             prisma.transaction.aggregate({
-                where: {
-                    ...(userId && { userId: userId as string }),
-                    status: 'approved',
-                    createdAt: { gte: today }
-                },
+                where: { ...whereBase, status: 'approved', createdAt: { gte: today } },
                 _sum: { amount: true }
             }),
             prisma.transaction.aggregate({
-                where: {
-                    ...(userId && { userId: userId as string }),
-                    status: 'approved'
-                },
+                where: { ...whereBase, status: 'approved' },
                 _sum: { amount: true }
             })
         ]);
 
-        res.json({
-            stats: {
-                totalApproved,
-                totalBlocked,
-                spentToday: spentToday._sum.amount || 0,
-                totalSpent: allTime._sum.amount || 0
-            }
-        });
+        const stats = {
+            totalApproved: approvedCount,
+            totalBlocked: blockedCount,
+            spentToday: todaySum._sum.amount || 0,
+            totalSpent: totalSum._sum.amount || 0
+        };
+
+        // Update cache
+        statsCache.set(cacheKey, { stats, timestamp: Date.now() });
+
+        res.json({ stats });
     } catch (error) {
         next(error);
     }
 });
 
-// POST /api/transactions/simulate - Simulate a transaction without executing
+// POST /api/transactions/simulate - Fast validation
 router.post('/simulate', async (req: Request, res: Response, next: NextFunction) => {
     try {
         const { agentId, service, amount, type } = req.body;
+
+        // Validate input early
+        if (!agentId || !service || typeof amount !== 'number') {
+            return res.status(400).json({
+                error: 'Missing required fields: agentId, service, amount'
+            });
+        }
 
         const result = await policyEnforcer.validateTransaction({
             agentId,
             service,
             amount,
-            type
+            type: type || 'payment'
         });
 
         res.json({ validation: result });
@@ -100,5 +132,13 @@ router.post('/simulate', async (req: Request, res: Response, next: NextFunction)
         next(error);
     }
 });
+
+// Invalidate stats cache (called after transaction)
+export function invalidateStatsCache(userId?: string): void {
+    if (userId) {
+        statsCache.delete(userId);
+    }
+    statsCache.delete('all');
+}
 
 export default router;
